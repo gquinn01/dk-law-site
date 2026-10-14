@@ -1,0 +1,153 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cascade analyzer</title>
+<!--
+  CASCADE ANALYZER - finds CSS rules that lose to a broader rule.
+
+  WHAT IT CHECKS
+  For every element on a page, it collects every declaration that matches
+  from every rule, works out which one the cascade actually picks, and
+  reports the cases where a rule scoped to a COMPONENT (its last selector
+  names a class, e.g. .tag or .social a) is beaten by a rule scoped to an
+  ANCESTOR whose last selector is a bare element (e.g. .card p or
+  footer.site a). That combination is the silent one: the component rule
+  reads as if it works, the broader rule wins on specificity, and nothing
+  in the file says so. The reverse direction (a broad rule losing to a
+  specific one) is normal cascade behavior and is filtered out.
+
+  It covers hover, focus and focus-visible by swapping each pseudo-class
+  for a stand-in class of identical specificity, so the cascade resolves
+  the way it would under a real pointer or keyboard. Media-query rules are
+  included only when they match at the width being tested.
+
+  HOW TO RUN
+    cp scripts/cascade-analyzer.html docs/_analyzer.html
+    python3 -m http.server 8800 --bind 127.0.0.1 &
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless=new --disable-gpu --virtual-time-budget=8000 \
+      --window-size=1600,1000 --dump-dom \
+      "http://127.0.0.1:8800/docs/_analyzer.html?page=index.html&w=1400"
+  Read the JSON out of the pre#o block on the page. Test the widths that carry
+  different rules (1400 and 375 at least) and one page of each type:
+  homepage, service, location, industry, about, free-audit. Delete the
+  copy in docs/ afterwards; a stray page there is one the audit scores
+  and a crawler can find.
+
+  Findings are objects: loser (selector that is defeated), loserVal,
+  winner, winVal, prop, state, and a sample element. Filter to the
+  component-vs-ancestor shape by keeping rows where the loser's last
+  compound has a class and the winner's does not.
+
+  VALIDATED against the social-pill bug (2026-08-19): .social a:hover
+  declared text-decoration:none but footer.site a:hover outranked it
+  (0,2,2 over 0,2,1) and underlined the pills anyway. Run against the
+  stylesheet from before that fix, this file reports it; run against the
+  fix, it does not. It also found .tag, .role and .card-more losing size
+  and color to .card p, which had been wrong on 15 pages.
+
+  A clean run prints an empty findings list. The two .dark :focus-visible
+  rows that survive the filter are known and harmless: the winner sets
+  the same Fresh Mint outline the loser asks for.
+-->
+<style>html,body{margin:0}iframe{border:0;display:block}</style></head><body>
+<iframe id="f"></iframe><pre id="o">running</pre>
+<script>
+var params=new URLSearchParams(location.search);
+var PAGE=params.get('page')||'index.html', W=+(params.get('w')||1400);
+var f=document.getElementById('f'); f.style.width=W+'px'; f.style.height='9000px'; f.src=PAGE;
+
+// pseudo-class -> stand-in class of identical specificity, so the cascade
+// resolves exactly as it would in that state
+var STATES=[['rest',null],['hover',':hover'],['focus',':focus'],['focus-visible',':focus-visible']];
+
+function spec(sel){
+  var s=sel.replace(/\[[^\]]*\]/g,' [] ');
+  var ids=(s.match(/#[\w-]+/g)||[]).length;
+  var cls=(s.match(/\.[\w-]+/g)||[]).length
+        + (s.match(/\[\]/g)||[]).length
+        + (s.match(/:(?!:)(?:hover|focus|focus-visible|active|not|first-child|last-child|nth-child|checked|target|visited|link|any-link|open)[\w-]*/g)||[]).length;
+  var types=(s.replace(/#[\w-]+|\.[\w-]+|::?[\w-]+(\([^)]*\))?|\[\]/g,' ').match(/[a-zA-Z][\w-]*/g)||[]).length;
+  return [ids,cls,types];
+}
+function cmp(a,b){for(var i=0;i<3;i++){if(a[i]!==b[i])return a[i]-b[i];}return 0;}
+function keyCompound(sel){var parts=sel.trim().split(/\s*[>+~]\s*|\s+/);return parts[parts.length-1];}
+
+f.onload=function(){
+  var d=f.contentDocument;
+  // rewrite pseudo-classes into probe classes across every sheet
+  var css='';
+  [].forEach.call(d.styleSheets,function(sh){
+    try{[].forEach.call(sh.cssRules,function(r){css+=r.cssText+'\n';});}catch(e){}
+  });
+  var rewritten=css.replace(/:hover/g,'.PROBE_hover')
+                   .replace(/:focus-visible/g,'.PROBE_focusvisible')
+                   .replace(/:focus/g,'.PROBE_focus');
+  [].forEach.call(d.querySelectorAll('style,link[rel=stylesheet]'),function(n){n.remove();});
+  var st=d.createElement('style'); st.textContent=rewritten; d.head.appendChild(st);
+
+  // flatten rules, keeping media context and source order
+  var rules=[];
+  function walk(list,media){
+    [].forEach.call(list,function(r){
+      if(r.type===1){ // style rule
+        r.selectorText.split(',').forEach(function(sel){
+          rules.push({sel:sel.trim(),media:media,style:r.style,order:rules.length});
+        });
+      } else if(r.type===4){ // media
+        if(f.contentWindow.matchMedia(r.conditionText||r.media.mediaText).matches) walk(r.cssRules,r.media.mediaText);
+      } else if(r.cssRules){ walk(r.cssRules,media); }
+    });
+  }
+  [].forEach.call(d.styleSheets,function(sh){try{walk(sh.cssRules,null);}catch(e){}});
+
+  var out=[], seen={};
+  var els=[].slice.call(d.querySelectorAll('*'));
+  STATES.forEach(function(st2){
+    var stateClass = st2[1] ? 'PROBE_'+st2[1].replace(/[:\-]/g,'') : null;
+    els.forEach(function(el){
+      if(stateClass) el.classList.add(stateClass);
+      var matching=rules.filter(function(r){
+        try{return el.matches(r.sel);}catch(e){return false;}
+      });
+      // per property, find winner
+      var byProp={};
+      matching.forEach(function(r){
+        for(var i=0;i<r.style.length;i++){
+          var p=r.style[i], v=r.style.getPropertyValue(p);
+          (byProp[p]=byProp[p]||[]).push({r:r,v:v,sp:spec(r.sel)});
+        }
+      });
+      Object.keys(byProp).forEach(function(p){
+        var decls=byProp[p];
+        if(decls.length<2) return;
+        var win=decls[0];
+        decls.forEach(function(dd){
+          var c=cmp(dd.sp,win.sp);
+          if(c>0||(c===0&&dd.r.order>win.r.order)) win=dd;
+        });
+        decls.forEach(function(loser){
+          if(loser===win) return;
+          if(loser.v===win.v) return;
+          // the interesting shape: the loser names a component class that the
+          // winner never mentions, and the winner's key compound is a bare
+          // element (a broad ancestor-scoped rule)
+          var wKey=keyCompound(win.r.sel), lKey=keyCompound(loser.r.sel);
+          var wHasClass=/[.#]/.test(wKey.replace(/\.PROBE_\w+/g,''));
+          var lHasClass=/[.#]/.test(lKey.replace(/\.PROBE_\w+/g,''));
+          var loserNamesMore = /[.#]/.test(loser.r.sel.replace(/\.PROBE_\w+/g,'')) &&
+                               loser.r.sel.replace(/\.PROBE_\w+/g,'').split(/[.#]/).slice(1)
+                                 .some(function(tok){return win.r.sel.indexOf('.'+tok)<0 && win.r.sel.indexOf('#'+tok)<0;});
+          if(!(loserNamesMore && !wHasClass)) return;
+          var k=[st2[0],loser.r.sel,p,win.r.sel].join('|');
+          if(seen[k]) return; seen[k]=1;
+          out.push({state:st2[0],media:loser.r.media||win.r.media||'',
+                    loser:loser.r.sel,loserVal:loser.v,winner:win.r.sel,winVal:win.v,prop:p,
+                    lsp:loser.sp.join(''),wsp:win.sp.join(''),
+                    sample:el.tagName.toLowerCase()+(el.className&&typeof el.className==='string'?'.'+el.className.split(' ').filter(function(x){return x.indexOf('PROBE')<0;}).join('.'):''),
+                    text:(el.textContent||'').replace(/\s+/g,' ').trim().slice(0,28)});
+        });
+      });
+      if(stateClass) el.classList.remove(stateClass);
+    });
+  });
+  document.getElementById('o').textContent='RULES='+rules.length+' ELS='+els.length+'\n'+JSON.stringify(out,null,1);
+};
+</script></body></html>

@@ -1,0 +1,89 @@
+name: "DKY: Site Auditor (weekly)"
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"   # Every Monday, 12:00 UTC (8:00am ET)
+  workflow_dispatch: {}     # Adds a manual "Run workflow" button so you can test anytime
+
+permissions:
+  contents: read            # The agent can read the site files...
+  issues: write             # ...and file/comment on Issues. Nothing else.
+  id-token: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      # SITE_URL is set to https://dklawllc.com/, so the scan runs
+      # against the firm's LIVE WordPress site and takes its page list
+      # from that site's own sitemap.xml. That is deliberate and it
+      # stays that way until cutover: docs/ in this repo is a placeholder,
+      # and a local run over an empty folder would report a clean site
+      # that does not exist yet.
+      #
+      # WordPress ships a <sitemapindex> rather than a <urlset>, so the
+      # expansion in scripts/audit.py is load-bearing here in a way it
+      # never was on a hand-built site. scripts/test-sitemap-expansion.py
+      # is what keeps it honest; run that before touching the expansion.
+      #
+      # AT CUTOVER, when docs/ becomes the site, this step keeps working
+      # unchanged: clear the SITE_URL variable to scan docs/ locally, or
+      # leave it set to keep scanning the live domain. Decide which, and
+      # record the decision, rather than letting it drift.
+      - name: Run the SEO scan
+        run: |
+          if [ -n "${{ vars.SITE_URL }}" ]; then
+            python3 scripts/audit.py "${{ vars.SITE_URL }}"
+          else
+            python3 scripts/audit.py
+          fi
+
+      - name: Claude interprets the scan and files the report
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Full agent output in the log. It is off by default and that
+          # cost us a run: the first forced draft did ten minutes of work,
+          # produced nothing, and the log said only "full output hidden
+          # for security", so which commands were refused and why it
+          # stopped were simply not in the record. This repo is public and
+          # its logs already are; the prompt carries no secrets and the
+          # agent reads files anyone can read. Being able to diagnose a
+          # bad run is worth more than hiding a transcript of public
+          # files.
+          show_full_output: true
+          prompt: |
+            Read the file agents/site-auditor.md and follow those instructions
+            exactly. Today's scan results are in audit-report.md.
+
+            This repo belongs to Distasio, Kowalski & Yelen, LLC (DKY), a
+            personal injury and medical malpractice law firm with a general
+            practice side, in Wilkes-Barre, PA. The scan you are reading was
+            run against the firm's LIVE WordPress site at
+            https://dklawllc.com/. The new site in docs/ has not been built
+            yet, and the firm-fact checks are OFF until the firm confirms
+            its own values.
+          # Edit(...), NOT Write(...). Claude Code checks file permissions
+          # against Edit and Read rules only; a Write(path) rule is accepted
+          # and then never consulted, so it would look right and do nothing.
+          # Verified on the founding client build: Write(./.audit-issue-body.md)
+          # refused the write, Edit(./.audit-issue-body.md) allowed it, and that
+          # same rule refused a different filename. Scoped to the one scratch file the
+          # agent writes a long issue body into, so it still cannot write
+          # anything else. These comments sit outside claude_args simply
+          # because it is unambiguous there. Inside works too: claude_args
+          # is a literal block scalar, so a "#" line is part of the string,
+          # but the action strips comment lines.
+          # WebFetch is granted because of the target: docs/ is empty and
+          # the real site is the firm's WordPress on a domain we do not
+          # deploy, so without WebFetch the agent would have no way to look
+          # at all, and step 2 of its instructions is precisely "do not
+          # promote an alert you did not check." Granting the ability to
+          # look is what makes that rule enforceable.
+          claude_args: |
+            --allowedTools "Read,Grep,Glob,WebFetch,Edit(./.audit-issue-body.md),Bash(gh issue:*),Bash(gh label:*),Bash(date:*)"
+        env:
+          GH_TOKEN: ${{ github.token }}

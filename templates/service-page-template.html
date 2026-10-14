@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- ============================================================
+       DKY (DISTASIO, KOWALSKI & YELEN, LLC): SERVICE AND LOCATION
+       PAGE TEMPLATE.
+
+       Copy this to docs/<slug>/index.html, then replace every {{TOKEN}}.
+       NOTHING BUILT FROM THIS FILE SHIPS UNTIL pagemap.md EXISTS with the
+       partner's written approval, and every page, redirect and text
+       change is approved in writing by the named partner before it ships,
+       with the approval recorded under the approver's name.
+
+       ---------------------------------------------------------------
+       THE FIRM'S FACTS ARE NOT IN THIS FILE.
+
+       Every fact about the firm is a token, and no token has a default.
+       The firm has not yet confirmed its own name spelling, so the name,
+       address, phone, email, hours, coordinates, profiles and review
+       count are all OFF in scripts/audit.py (FACTS_OFF). When the firm
+       confirms them in writing, they go into scripts/audit.py first, with
+       the confirmer's name and the date, and into this file as literals
+       second, so nobody retypes them by hand. They are NOT read off the
+       live site: the live site's NAP is exactly what the firm has not
+       confirmed.
+
+       Under the prime law an unverified fact does not ship, and a
+       plausible placeholder is the most dangerous kind, because
+       placeholders ship.
+
+         {{FIRM_NAME}}        the name of record, NAP_NAME, character for
+                              character, nothing appended
+         {{FIRM_STREET}}      NAP_STREET
+         {{FIRM_LOCALITY}}    NAP_LOCALITY
+         {{FIRM_REGION}}      NAP_REGION
+         {{FIRM_POSTAL}}      NAP_POSTAL
+         {{FIRM_PHONE}}       NAP_PHONE_DISPLAY, the visible spelling
+         {{FIRM_TEL}}         NAP_PHONE_TEL, the tel: form, +1 and digits
+         {{FIRM_EMAIL}}       NAP_EMAIL. The firm's email lives on dky.law.
+         {{GEO_LAT}}          GEO_LAT and GEO_LON, the verified pin, from
+         {{GEO_LON}}          the place's own data, never a map URL's
+                              @lat,lon (the viewport centre, not the pin)
+         {{GBP_MAP_URL}}      the Google Business Profile's Maps URL, the
+                              node's hasMap and the first sameAs entry
+         {{SAME_AS}}          the confirmed profiles, SAME_AS, as JSON
+                              strings. scripts/sync-area-served.py rewrites
+                              both on every page once they are set.
+         {{AREA_SERVED}}      schema areaServed. Places the firm genuinely
+                              serves, AREA_SERVED. Coverage without pages
+                              is legitimate.
+         {{GA4_ID}}           GA4 measurement ID, in the FIRM'S OWN Google
+                              account, never the agency's
+         {{FORM_ENDPOINT}}    form POST target, on the FIRM'S OWN account,
+                              never the agency's
+         {{FORM_SUBJECT}}     subject line on the form email
+         {{FORM_FIELDS}}      the form's fields. NO DEFAULT: what a person
+                              is asked, and which fields are required, is
+                              the firm's to decide
+         {{FORM_SUBMIT_LABEL}} the submit button's words. NO DEFAULT.
+         {{FORM_THANKS}}      what the reader sees after sending. NO
+                              DEFAULT: it is a promise about how the firm
+                              responds, so it comes from the firm
+         {{HERO_IMG_SRC}}     the hero photograph, a REAL one of the firm,
+         {{HERO_IMG_ALT}}     its people or its offices, with real alt text
+         {{HERO_IMG_W}}       and the file's actual pixel dimensions so the
+         {{HERO_IMG_H}}       layout does not jump
+         {{PROOF_LINE}}       see PROOF LINE below. No default on purpose.
+
+       CALL TRACKING: no tracking number goes in this file, ever. A
+       tracking script swaps numbers into the rendered page at runtime;
+       the source carries the firm's one number. scripts/audit.py fails any
+       page carrying a number listed in TRACKING_PHONE_RES.
+
+       THE CHROME. The header and the footer are written by
+       scripts/sync-chrome.py, identical on every page, between the
+       CHROME:HEAD marker and the end of <header>, and as the whole
+       <footer class="site">. They are not specified yet: their items and
+       labels come from pagemap.md and their NAP from the confirmed facts,
+       and sync-chrome.py refuses to write them until both exist. After a
+       page built from this file lands, run scripts/sync-chrome.py.
+
+       PAGE MAP TOKENS. These are the site's own navigation, so they come
+       from pagemap.md, not from this file:
+
+         {{CTA_HREF}}        the one conversion action's target
+         {{CTA_LABEL}}       its label
+         {{CONTACT_TITLE}}   contact band heading
+         {{CONTACT_SUB}}     contact band subhead
+
+       BUTTON GRAMMAR: the filled button is the ONE conversion action.
+       Decide it once, in pagemap.md, and never inflate a nav item into a
+       button.
+
+       SECTION ORDER, the house skeleton:
+       hero (photo, call, proof) > What You Get > differentiator band
+       with a CTA row > How It Works > contact band > FAQ last.
+       A LOCATION HUB inserts Places We Serve between the differentiator
+       band and How It Works.
+
+       A PAGE CARRIES THE SECTIONS ITS SOURCE PAGE CARRIES, and no others.
+       The live site at dklawllc.com is the content source of record. An
+       empty section invites invented copy, which is the failure the prime
+       law exists to stop.
+
+       THE DESIGN SYSTEM IS NOT DECIDED. Content comes first: structure and
+       words are agreed before anything is designed. The class names below
+       are the house skeleton's, kept so the structure is readable; the
+       palette, type and grounds are decided later, in one place, the
+       shared stylesheet, and this file follows.
+
+       ---------------------------------------------------------------
+       DEPTH. Every depth-dependent path goes through {{ROOT}}:
+         one level down    ->  ../
+         two levels down   ->  ../../
+       {{PAGE_PATH}} is the page's slug, no leading or trailing slash. Do
+       not introduce a leading slash: the site may also serve from a
+       project subpath, where /anything 404s.
+
+       SLUGS ARE KEPT WHERE A PAGE KEEPS ITS PURPOSE. The promise of a
+       migration is that rankings survive, and every unnecessary redirect
+       spends a little of that. pagemap.md is the list, and every redirect
+       is approved in writing by the named partner before it ships.
+
+       BREADCRUMB. Keep the visible trail and the schema in the same order
+       with the same labels, and give the last item no link. The audit
+       fails a page whose crumb and BreadcrumbList disagree.
+
+       ---------------------------------------------------------------
+       WRITING THE PAGE. Corcoran writes every page itself, in plain
+       language, to the standard in .claude/skills/corcoran-site-standards.
+       The firm's September 17 package is a BRIEF for what each page should
+       do and for the firm's own vocabulary, never copy to paste.
+
+       - REGISTER. The reader is a person who was hurt, or whose family
+         was, reading on a phone. The firm's own words for the work are the
+         right words; legal Latin and marketing-speak are not.
+       - EVERY CLAIM IS CHECKED AGAINST THE LIVE SITE. The new site never
+         claims anything the old site does not already claim. A claim that
+         is not on the live site carries a [CONFIRM] marker in the HTML
+         comment beside it, and a row in proposed-changes.md naming the
+         partner who must initial it. scripts/audit.py lists every marker
+         while STAGING is True and fails the page once it is False.
+       - NO RESULTS, NO GUARANTEES. Case results, verdict figures,
+         settlement amounts, "best" or "top" claims and anything that
+         promises an outcome ship only if the live site already makes the
+         exact claim and the named partner approves it here.
+       - NO PROCESS WINKS. Write about the reader's situation, never about
+         how the page was made.
+       - SCHEMA ON A LOCATION PAGE. The business address is the firm's own,
+         on every page. Never put an address in a place the firm does not
+         sit in. The place is declared through areaServed instead, on both
+         the business node and the Service node.
+
+       ---------------------------------------------------------------
+       PROOF LINE. {{PROOF_LINE}} has NO default. Whatever goes there is a
+       claim about the firm, so it comes from the live site and the named
+       partner's written approval, and nowhere else. Years in practice,
+       honors, bar admissions, memberships, results: every one is
+       checkable, and every one ships only after the partner initials it.
+       No example is given here, not even as a shape to imitate: the
+       nearest thing to hand is the thing that gets reached for.
+
+       ---------------------------------------------------------------
+       RULES THIS TEMPLATE ENFORCES, do not break them:
+       - Every internal link is RELATIVE and never starts with "/".
+         Absolute URLs appear only where the spec demands them: canonical,
+         og:url, og:image, and schema @id/url values, all on
+         https://dklawllc.com/.
+       - Title 60 characters or fewer, meta description 160 or fewer,
+         counted by machine. When the name does not fit, the name is what
+         drops, never the service or the place.
+       - Exactly ONE h1.
+       - Every <img> carries real alt text. alt="" scores as missing.
+       - The hero image is a REAL PHOTOGRAPH: no stock, no AI imagery.
+       - No em dashes anywhere, including schema text and comments.
+       - No price, offer, review or rating markup.
+       - The page declares its kind, if it has one, with
+         <meta name="dky-page" content="...">; see RUBRIC_EXEMPTIONS.
+
+       AFTER COPYING, the page does not exist until you also:
+       1. run python3 scripts/build-sitemap.py
+       2. add its line to "## Key pages" in docs/llms.txt
+       3. link it from the chrome once the chrome is specified. NEVER write
+          a link to a page that does not exist yet: the build fails on a
+          relative link with no file behind it.
+       4. run: python3 scripts/audit.py --strict   (every page 100/100)
+       ============================================================ -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>{{TITLE}}</title>
+  <meta name="description" content="{{META_DESC}}">
+
+  <link rel="canonical" href="https://dklawllc.com/{{PAGE_PATH}}/">
+  <meta name="robots" content="index, follow">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{TITLE}}">
+  <meta property="og:description" content="{{OG_DESC}}">
+  <meta property="og:url" content="https://dklawllc.com/{{PAGE_PATH}}/">
+  <meta property="og:image" content="{{OG_IMAGE}}">
+  <meta property="og:image:width" content="{{OG_IMAGE_W}}">
+  <meta property="og:image:height" content="{{OG_IMAGE_H}}">
+  <meta property="og:image:alt" content="{{OG_IMAGE_ALT}}">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- WHY: Google Analytics 4. The property ID is {{GA4_ID}} and it lives
+       in the FIRM'S OWN Google account, never the agency's, so the exit
+       promise stays easy to keep. Carry the existing property over from
+       the WordPress site at cutover if the firm already has one, so the
+       history survives; open a new one in its account if it does not.
+       This must be the ONLY tracking on the site. Audit whatever the
+       WordPress site is running before cutover (tag manager containers,
+       pixels, dead Universal Analytics tags) and bring none of it across
+       without the named partner's written approval. Do not add a tag
+       without updating docs/privacy/ in the same commit. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{GA4_ID}}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{GA4_ID}}');
+  </script>
+
+  <!-- The shared stylesheet and script. scripts/stamp-assets.py writes the
+       ?v= cache-busting stamp here, in docs/ and in this file, once the
+       files exist; the audit fails a page whose stamp is missing or stale. -->
+  <link rel="stylesheet" href="{{ROOT}}assets/site.css">
+  <script src="{{ROOT}}assets/site.js" defer></script>
+
+  <!-- WHY: one @graph. The LegalService node repeats the SAME @id as the
+       homepage so every page resolves to one business entity, and it is
+       repeated in full rather than referenced, because a bare @id carries
+       no type and no sameAs. SCHEMA_BUSINESS_TYPE in scripts/audit.py is
+       LegalService, and the audit fails a page whose business node is not.
+       Attorney nodes come later, as a separate decision, beside this one.
+       No offers, priceRange, Review or AggregateRating anywhere. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "LegalService",
+        "@id": "https://dklawllc.com/#business",
+        "name": "{{FIRM_NAME}}",
+        "url": "https://dklawllc.com/",
+        "telephone": "{{FIRM_TEL}}",
+        "email": "{{FIRM_EMAIL}}",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "{{FIRM_STREET}}",
+          "addressLocality": "{{FIRM_LOCALITY}}",
+          "addressRegion": "{{FIRM_REGION}}",
+          "postalCode": "{{FIRM_POSTAL}}",
+          "addressCountry": "US"
+        },
+        "geo": { "@type": "GeoCoordinates", "latitude": {{GEO_LAT}}, "longitude": {{GEO_LON}} },
+        "hasMap": "{{GBP_MAP_URL}}",
+        "sameAs": [
+{{SAME_AS}}
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://dklawllc.com/{{PAGE_PATH}}/#webpage",
+        "url": "https://dklawllc.com/{{PAGE_PATH}}/",
+        "name": "{{TITLE}}",
+        "description": "{{META_DESC}}",
+        "dateModified": "{{DATE_MODIFIED}}",
+        "about": { "@id": "https://dklawllc.com/{{PAGE_PATH}}/#service" },
+        "isPartOf": { "@id": "https://dklawllc.com/#business" }
+      },
+      {
+        "@type": "Service",
+        "@id": "https://dklawllc.com/{{PAGE_PATH}}/#service",
+        "name": "{{SERVICE_NAME}}",
+        "serviceType": "{{SERVICE_TYPE}}",
+        "description": "{{SERVICE_DESC}}",
+        "provider": { "@id": "https://dklawllc.com/#business" },
+        "areaServed": [
+{{AREA_SERVED}}
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+{{BREADCRUMB_SCHEMA}}
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {{FAQ_SCHEMA}}
+        ]
+      }
+    ]
+  }
+  </script>
+  <!-- ICONS, written by scripts/sync-chrome.py from audit.ICON_LINKS: the
+       firm's own site icon, made by scripts/prepare-favicon.py. -->
+  <link rel="icon" sizes="any" href="{{ROOT}}favicon.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ROOT}}assets/img/icon-192.png">
+  <link rel="apple-touch-icon" href="{{ROOT}}assets/img/icon-180.png">
+</head>
+<body>
+
+  <!-- CHROME:HEAD, written by scripts/sync-chrome.py. Edit the script,
+       never this block: it is rewritten on every page, and scripts/audit.py
+       fails a page whose chrome differs from the others in anything but
+       the current-page marking. NOT SPECIFIED YET: see the note at the top
+       of this file. -->
+  <header class="nav">
+  </header>
+
+  <main>
+
+    <section class="hero hero--page">
+      <div class="wrap">
+        <!-- The visible breadcrumb mirrors the BreadcrumbList above.
+             Same labels, same order, or the audit fails the page. -->
+        <nav class="crumb" aria-label="Breadcrumb">
+          <ol>
+{{BREADCRUMB_HTML}}
+          </ol>
+        </nav>
+        <div class="hero-split">
+          <div class="hero-copy-col">
+            <p class="eyebrow">{{EYEBROW}}</p>
+            <h1>{{H1}}</h1>
+            <p class="lead">{{LEAD}}</p>
+            <div class="cta-row">
+              <a class="btn" href="{{CTA_HREF}}">{{CTA_LABEL}}</a>
+              <a class="btn btn-ghost" href="tel:{{FIRM_TEL}}">Call {{FIRM_PHONE}}</a>
+            </div>
+            <p class="proof">{{PROOF_LINE}}</p>
+          </div>
+
+          <!-- A REAL PHOTOGRAPH of the firm, its people or its offices.
+               Width and height are the file's actual pixels, so the
+               layout does not jump while it loads. -->
+          <div class="hero-photo">
+            <img src="{{HERO_IMG_SRC}}" alt="{{HERO_IMG_ALT}}" width="{{HERO_IMG_W}}" height="{{HERO_IMG_H}}" fetchpriority="high" decoding="async">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ WHAT YOU GET ============ -->
+    <section id="included">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 class="sec-title">{{INCLUDED_TITLE}}</h2>
+          <p class="sec-sub">{{INCLUDED_SUB}}</p>
+        </div>
+        <div class="grid3">
+{{INCLUDED_CARDS}}
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DIFFERENTIATOR BAND ============
+         One of the two moments the page asks the reader to act. -->
+    <section class="dark" id="approach">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 class="sec-title">{{APPROACH_TITLE}}</h2>
+          <p class="sec-sub">{{APPROACH_SUB}}</p>
+        </div>
+        <div class="grid2">
+{{APPROACH_CARDS}}
+        </div>
+        <div class="cta-row">
+          <a class="btn" href="{{CTA_HREF}}">{{CTA_LABEL}}</a>
+          <a class="btn btn-ghost" href="tel:{{FIRM_TEL}}">Call {{FIRM_PHONE}}</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PLACES WE SERVE, LOCATION HUBS ONLY ============
+         DELETE this whole section for a service page. Place names are
+         plain text until a place earns its own page (rule 7: three
+         checkable local facts, a unique FAQ, verified variance, and Search
+         Console evidence of demand), then the name becomes a link. Never
+         link a place to a stub or a page that does not exist. Every place
+         listed is one the firm confirms it serves. -->
+    <section id="places">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 class="sec-title">{{PLACES_TITLE}}</h2>
+        </div>
+        <p>{{PLACES_PROSE}}</p>
+        <ul class="place-list">
+{{PLACES_LIST}}
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ HOW IT WORKS ============
+         NUMBERED PROCESS steps, and they come from the live page this one
+         migrates. No step is supplied here as a default: a default process
+         gets pasted onto a page whose real process is different. If the
+         source page describes its process as prose rather than steps,
+         migrate the prose and delete this section. -->
+    <section id="how">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 class="sec-title">How It Works</h2>
+          <p class="sec-sub">{{HOW_SUB}}</p>
+        </div>
+        <div class="grid4">
+{{HOW_STEPS}}
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT (identical on every page) ============ -->
+    <section class="dark contact" id="contact">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 class="sec-title">{{CONTACT_TITLE}}</h2>
+          <p class="sec-sub">{{CONTACT_SUB}}</p>
+        </div>
+        <!-- ============ CONTACT FORM ============
+             Posts to the FIRM'S OWN form endpoint, {{FORM_ENDPOINT}}, so
+             there is no server code in this repo and the firm keeps the
+             account. Whether the site carries a form at all is pagemap.md's
+             to say. A form on a law firm's site asks a person to describe
+             what happened to them: what it asks, what it warns about
+             (nothing sent through it creates an attorney-client
+             relationship, if the firm says so), and where the mail goes
+             are the firm's to decide in writing. -->
+        <form class="contact-form" action="{{FORM_ENDPOINT}}" method="POST">
+          <input type="hidden" name="_subject" value="{{FORM_SUBJECT}}">
+          <!-- Honeypot. Hidden from people and from screen readers, so
+               anything that fills it in is a bot. -->
+          <div class="af-hp" aria-hidden="true">
+            <label for="af-company">Leave this field empty</label>
+            <input type="text" id="af-company" name="_gotcha" tabindex="-1" autocomplete="off">
+          </div>
+{{FORM_FIELDS}}
+          <p class="af-error" role="alert" hidden></p>
+          <button class="btn af-submit" type="submit">{{FORM_SUBMIT_LABEL}}</button>
+        </form>
+        <div class="af-thanks" role="status" hidden>
+          <p>{{FORM_THANKS}}</p>
+          <p>Or call <a href="tel:{{FIRM_TEL}}">{{FIRM_PHONE}}</a>.</p>
+        </div>
+        <p class="contact-alt">Call <a href="tel:{{FIRM_TEL}}">{{FIRM_PHONE}}</a> or email <a href="mailto:{{FIRM_EMAIL}}">{{FIRM_EMAIL}}</a>.</p>
+      </div>
+    </section>
+
+    <!-- ============ FAQ, LAST BEFORE THE FOOTER ============
+         Each answer must be byte-identical to its acceptedAnswer text in
+         the FAQPage schema above. Edit one, edit both. Every answer opens
+         on a sentence that is true when it is lifted alone, because that
+         is exactly what an assistant does with it; the audit fails "No."
+         and "It can." openers. Every question is this page's own. -->
+    <section id="faq">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 class="sec-title">Questions, Answered</h2>
+          <p class="sec-sub">{{FAQ_SUB}}</p>
+        </div>
+{{FAQ_ITEMS}}
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ FOOTER, written by scripts/sync-chrome.py ============
+       NOT SPECIFIED YET: see the note at the top of this file. -->
+  <footer class="site">
+  </footer>
+
+</body>
+</html>

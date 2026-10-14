@@ -1,0 +1,53 @@
+name: "DKY: Google Watcher (daily)"
+
+on:
+  schedule:
+    - cron: "0 11 * * *"   # Every day, 11:00 UTC (7:00am ET)
+  workflow_dispatch: {}     # Manual "Run workflow" button for testing
+
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Sweep the SEO news sources
+        run: python3 scripts/fetch_seo_news.py
+
+      - name: Claude reads the sweep and files alerts (only if warranted)
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Full agent output in the log. It is off by default and that
+          # cost us a run: the first forced draft did ten minutes of work,
+          # produced nothing, and the log said only "full output hidden
+          # for security", so which commands were refused and why it
+          # stopped were simply not in the record. This repo is public and
+          # its logs already are; the prompt carries no secrets and the
+          # agent reads files anyone can read. Being able to diagnose a
+          # bad run is worth more than hiding a transcript of public
+          # files.
+          show_full_output: true
+          prompt: |
+            Read the file agents/google-watcher.md and follow those instructions
+            exactly. Today's headline sweep is in seo-news.md.
+
+            This repo belongs to Distasio, Kowalski & Yelen, LLC (DKY), a
+            personal injury and medical malpractice law firm with a general
+            practice side, in Wilkes-Barre, PA, at https://dklawllc.com/.
+            Judge every headline against that one business.
+          # Edit(...), NOT Write(...); see the note in site-audit-agent.yml,
+          # including why these comments stay outside claude_args. The
+          # founding repo's watcher hit that wall, trying to write
+          # .gw-comment.md and to redirect into /tmp. The permission is in
+          # place here from the first commit so this one never does.
+          claude_args: |
+            --allowedTools "Read,Grep,Glob,Edit(./.gw-comment.md),Bash(gh issue:*),Bash(gh label:*),Bash(date:*),WebFetch"
+        env:
+          GH_TOKEN: ${{ github.token }}
