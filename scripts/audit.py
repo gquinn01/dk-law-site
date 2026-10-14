@@ -727,6 +727,18 @@ PENDING_HREF_RE = re.compile(r'data-pending-href="([^"]+)"')
 SITEMAP_MAX_DEPTH = 3
 SITEMAP_MAX_FILES = 50
 
+# THE LIVE SCAN IS SCOPED TO THE FIRM'S REAL PAGES, ON PURPOSE (2026-10-14).
+# When the target is the live site (SITE_BASE's host, named by its root
+# URL), only these children of its sitemap index are scored. The rest of
+# the WordPress index is attachment, tag, category and author archives:
+# 827 of the 938 URLs it listed on 2026-10-14, none of them a page anyone
+# wrote, all of them scored the same few failures over and over. Those
+# children are still fetched and counted, and the report's Site-wide notes
+# say every week how many URLs the full index hands Google, by sitemap,
+# beside how many real pages were scored. Do not widen this list in a
+# sweep; CLAUDE.md records the decision. A plain urlset is never scoped.
+LIVE_SITEMAP_SCOPE = ("page-sitemap.xml", "post-sitemap.xml")
+
 # --- LocalBusiness and everything that IS one -------------------------
 # The "is this a local business page" check used to hold a hand-written
 # list of about twenty types, which meant every schema.org subtype
@@ -3458,11 +3470,25 @@ def is_xml_url(url: str) -> bool:
 def new_sitemap_stats() -> dict:
     """What one expansion learned about the sitemaps it read, so the
     report can say what was followed and what was skipped."""
-    return {"files": 0, "indexes": 0, "unreadable": [], "capped": False}
+    return {"files": 0, "indexes": 0, "unreadable": [], "capped": False,
+            "counts": {}}
+
+
+def sitemap_name(url: str) -> str:
+    """The file name a sitemap URL ends in, e.g. page-sitemap.xml."""
+    return posixpath.basename(urlparse(url).path)
+
+
+def is_live_site(url: str) -> bool:
+    """True when a URL is on the firm's live domain, www or not."""
+    def host(u):
+        h = urlparse(u).netloc.lower()
+        return h[4:] if h.startswith("www.") else h
+    return host(url) == host(SITE_BASE)
 
 
 def collect_sitemap_pages(sitemap_url: str, depth: int = 0, seen: set = None,
-                          stats: dict = None) -> list:
+                          stats: dict = None, scope: tuple = None) -> list:
     """Returns the page URLs one sitemap lists, following an index.
 
     A <urlset> lists pages. A <sitemapindex> lists other sitemaps, and
@@ -3474,7 +3500,11 @@ def collect_sitemap_pages(sitemap_url: str, depth: int = 0, seen: set = None,
 
     Anything ending in .xml is dropped here whatever the wrapper said,
     so a sitemap that is mislabeled, or an index nested deeper than we
-    follow, still cannot put a sitemap into the page list."""
+    follow, still cannot put a sitemap into the page list.
+
+    `scope`, when given, names the children of the TOP index whose pages
+    are returned. Every other child is still read, so its URLs are
+    counted in stats["counts"], but its pages are dropped."""
     if seen is None:
         seen = set()
     if stats is None:
@@ -3499,11 +3529,16 @@ def collect_sitemap_pages(sitemap_url: str, depth: int = 0, seen: set = None,
         for child in locs:
             # One dead child sitemap must not cost us the others.
             try:
-                pages.extend(collect_sitemap_pages(child, depth + 1, seen, stats))
+                found = collect_sitemap_pages(child, depth + 1, seen, stats)
             except Exception:
                 stats["unreadable"].append(child)
+                continue
+            if scope is None or sitemap_name(child) in scope:
+                pages.extend(found)
         return pages
-    return [u for u in locs if not is_xml_url(u)]
+    found = [u for u in locs if not is_xml_url(u)]
+    stats["counts"][sitemap_url] = len(found)
+    return found
 
 
 def expand_sitemap(url: str):
@@ -3515,15 +3550,30 @@ def expand_sitemap(url: str):
     # file lists, not what /sitemap.xml lists.
     entry = url if is_xml_url(url) else root + "/sitemap.xml"
     fallback = [] if is_xml_url(url) else [url]
+    # The live site, named by its root, is scored on its real pages only.
+    # See LIVE_SITEMAP_SCOPE.
+    scope = LIVE_SITEMAP_SCOPE if is_live_site(url) and not is_xml_url(url) else None
     stats = new_sitemap_stats()
     try:
-        locs = collect_sitemap_pages(entry, stats=stats)
+        locs = collect_sitemap_pages(entry, stats=stats, scope=scope)
     except Exception:
         return fallback, (f"Could not read {entry}, so only the page you named was "
                           "audited. Add a sitemap so every page gets scanned.")
 
     followed = []
-    if stats["indexes"]:
+    if scope and stats["indexes"]:
+        # Every URL the full index hands Google, by sitemap, beside what
+        # was scored, so the gap is in the report every week.
+        total = sum(stats["counts"].values())
+        scored = len(set(locs))
+        outside = sum(c for u, c in stats["counts"].items() if sitemap_name(u) not in scope)
+        by_map = ", ".join(f"{sitemap_name(u)} {c}" for u, c in stats["counts"].items())
+        followed.append(f"**The full sitemap index at {entry} hands Google {total} URLs** "
+                        f"({by_map}). This scan scores the {scored} in "
+                        f"{' and '.join(scope)}, the site's real pages; the other "
+                        f"{outside} are WordPress archive and attachment addresses, "
+                        "counted here and deliberately not scored.")
+    elif stats["indexes"]:
         n = stats["files"] - 1
         followed.append(f"{entry} is a sitemap index, so the {n} sitemap"
                         f"{'' if n == 1 else 's'} under it "

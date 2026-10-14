@@ -84,9 +84,39 @@ FAKE = {
         <url><loc>https://liar.test/post-sitemap.xml</loc></url>
         <url><loc>https://liar.test/real-page/</loc></url></urlset>""",
 
+    # The firm's live site: a Yoast index with the archive children the
+    # weekly scan counts but does not score. Only page- and post-sitemap
+    # hold real pages. See LIVE_SITEMAP_SCOPE in audit.py.
+    "https://live.test/sitemap.xml": """<sitemapindex>
+        <sitemap><loc>https://live.test/post-sitemap.xml</loc></sitemap>
+        <sitemap><loc>https://live.test/page-sitemap.xml</loc></sitemap>
+        <sitemap><loc>https://live.test/attachment-sitemap.xml</loc></sitemap>
+        <sitemap><loc>https://live.test/category-sitemap.xml</loc></sitemap>
+        <sitemap><loc>https://live.test/post_tag-sitemap.xml</loc></sitemap>
+        <sitemap><loc>https://live.test/author-sitemap.xml</loc></sitemap>
+      </sitemapindex>""",
+    "https://live.test/post-sitemap.xml": """<urlset>
+        <url><loc>https://live.test/blog/one/</loc></url>
+        <url><loc>https://live.test/blog/two/</loc></url></urlset>""",
+    "https://live.test/page-sitemap.xml": """<urlset>
+        <url><loc>https://live.test/</loc></url></urlset>""",
+    "https://live.test/attachment-sitemap.xml": """<urlset>
+        <url><loc>https://live.test/photo-1/</loc></url>
+        <url><loc>https://live.test/photo-2/</loc></url>
+        <url><loc>https://live.test/photo-3/</loc></url></urlset>""",
+    "https://live.test/category-sitemap.xml": """<urlset>
+        <url><loc>https://live.test/category/news/</loc></url></urlset>""",
+    "https://live.test/post_tag-sitemap.xml": "<urlset>" + "".join(
+        f"<url><loc>https://live.test/tag/t{i}/</loc></url>" for i in range(7)) + "</urlset>",
+    "https://live.test/author-sitemap.xml": """<urlset>
+        <url><loc>https://live.test/author/a/</loc></url></urlset>""",
+
     # A sitemap with nothing in it.
     "https://empty.test/sitemap.xml": "<urlset></urlset>",
 }
+
+# The same live index answered at the www host, as a WordPress site may.
+FAKE["https://www.live.test/sitemap.xml"] = FAKE["https://live.test/sitemap.xml"]
 
 # An index chain longer than the depth cap allows.
 FAKE["https://deep.test/sitemap.xml"] = (
@@ -208,6 +238,38 @@ def main():
           len(targets) == audit.SITEMAP_MAX_FILES - 1, len(targets))
     check("   and it admits pages may be missing",
           "may be missing" in (note or ""), note)
+
+    print("11. The live site: scored on page and post sitemaps, every URL counted")
+    real_base = audit.SITE_BASE
+    audit.SITE_BASE = "https://live.test/"
+    try:
+        targets, note = expand("https://live.test/")
+        check("   only page- and post-sitemap pages are scored",
+              targets == ["https://live.test/", "https://live.test/blog/one/",
+                          "https://live.test/blog/two/"], targets)
+        check("   the archive sitemaps are still read, so they can be counted",
+              "https://live.test/post_tag-sitemap.xml" in FETCHED, FETCHED)
+        check("   the note counts every URL the full index lists",
+              "hands Google 15 URLs" in (note or ""), note)
+        check("   by sitemap",
+              all(f"{n} {c}" in (note or "") for n, c in [
+                  ("post-sitemap.xml", 2), ("page-sitemap.xml", 1),
+                  ("attachment-sitemap.xml", 3), ("category-sitemap.xml", 1),
+                  ("post_tag-sitemap.xml", 7), ("author-sitemap.xml", 1)]), note)
+        check("   beside the real pages scored and the rest left out",
+              "scores the 3 " in (note or "") and "the other 12 " in (note or ""), note)
+        targets, note = expand("https://www.live.test/")
+        check("   the www form of the live host is scoped the same way",
+              len(targets) == 3, targets)
+        targets, note = expand("https://live.test/post_tag-sitemap.xml")
+        check("   pointed straight at a child, it still audits what that file lists",
+              len(targets) == 7, targets)
+    finally:
+        audit.SITE_BASE = real_base
+    targets, note = expand("https://live.test/")
+    check("   any other site's index is not scoped: every page is scored",
+          len(targets) == 15, len(targets))
+    check("   and gets no count note", "hands Google" not in (note or ""), note)
 
     print()
     if FAILURES:

@@ -129,7 +129,22 @@ The `SITE_URL` repo variable is set to `https://dklawllc.com/`, so **the
 weekly Site Auditor scans the firm's LIVE WordPress site** until cutover.
 `docs/` is a placeholder, and a local run over it would report nothing. The
 live sitemap is WordPress's `<sitemapindex>`; `scripts/audit.py` follows it,
-and `scripts/test-sitemap-expansion.py` keeps it doing so. **At cutover**,
+and `scripts/test-sitemap-expansion.py` keeps it doing so.
+
+**The live scan's scope is deliberate (decided 2026-10-14): page and post
+sitemaps only.** When the target is the live site, `scripts/audit.py`
+scores only the pages in `page-sitemap.xml` and `post-sitemap.xml`
+(`LIVE_SITEMAP_SCOPE`). The reason: on 2026-10-14 the full index listed 938
+URLs, and only 111 of them were real pages (46 pages and 65 posts). The
+other 827 were WordPress attachment, tag, category and author archives:
+nobody wrote them, and scoring them buried the real pages under the same
+few failures repeated hundreds of times. The archive sitemaps are still
+fetched and counted. Every report's Site-wide notes give the full index's
+URL count by sitemap, beside the real pages scored, so the gap between
+what Google is handed and what exists is reported every week instead of
+lost. **Do not widen the scope in a sweep.** Widening it is a decision, and
+it gets recorded here. `scripts/test-sitemap-expansion.py` case 11 tests
+the scope. **At cutover**,
 decide explicitly whether to clear `SITE_URL` (scan `docs/`) or keep the
 live domain, and record the decision here.
 
