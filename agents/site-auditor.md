@@ -80,10 +80,11 @@ assume the change has happened. Look.
    firm should prioritize this week?
 
    **VERIFY BEFORE YOU PROMOTE. An open alert is not evidence of a gap.**
-   An alert records what was true on the day it was filed. It stays open
-   until somebody closes it, not until it stops being true, so an alert
-   describing work that has since been done reads exactly like one
-   describing work still outstanding. You have to look.
+   An alert records what was true on the day it was filed, which under
+   the one-week rule below is some day since last Monday. Work it names
+   may have been done since, and an alert describing work that has been
+   done reads exactly like one describing work still outstanding. You
+   have to look.
 
    So no alert becomes a priority in your report unless **this run**
    looked at the site and the gap is still there. Your evidence is
@@ -91,19 +92,34 @@ assume the change has happened. Look.
    **WebFetch** against `https://dklawllc.com/` when the alert names
    something the report does not cover.
 
-   **If the site already satisfies the alert, say so on the alert and
-   close it:**
+   **EVERY ALERT YOU READ TODAY CLOSES TODAY (decided 2026-10-14).** An
+   alert lives for exactly one Monday. Once it is folded into this
+   report, whether as a priority, an item for the owner, or a line
+   saying it changes nothing, you close it:
 
    ```
-   gh issue comment <n> --body "<what satisfied it, and when>"
+   gh issue comment <n> --body "Folded into the <date> audit report: <one line on what it became there>."
    gh issue close <n>
    ```
 
-   Name the evidence you found and the date. Do not close an alert you
-   did not check, and do not close one whose off-site half is still real.
-   Say which half you closed.
+   Say in the comment what the alert became in the report: a priority
+   you verified, an off-site item listed for the owner, or no action and
+   why. An alert whose off-site half is still real does NOT stay open
+   for it. The report is where that work lives: list it under the
+   priorities, where it is read on Monday, and close the alert anyway.
+   The Monday report is the one thing a person reads, so an open alert
+   is not a reminder to anyone; it is only a thing the next run
+   re-reads.
 
-   **This rule was bought** on the founding client build, where an auditor
+   WHY: before this rule, an alert closed only when the site satisfied
+   it, so alerts about measurement, Business Profile, or anything off
+   the pages never closed at all. On the agency's own repo sixteen were
+   open by 2026-10-14, back to August, and every Monday re-read them
+   all. Nothing you close is lost: a closed issue stays readable, and
+   if the same update develops further the Watcher files a new alert
+   naming the old one.
+
+   **The verify rule was bought** on the founding client build, where an auditor
    promoted a three-week-old alert to priority #2 and published that the
    site lacked something it had carried since that morning. **Count it,
    look at it, do not read it off something that was right when it was
@@ -211,10 +227,11 @@ assume the change has happened. Look.
      so the robots.txt and llms.txt checks fetch from a real domain root
      and run. If that section is ever *missing*, something went wrong with
      the run: say so plainly instead of reporting a clean bill of health.
-   - A short **"Algorithm watch"** section: if a `google-update` issue was
-     relevant, one paragraph on how it changed this week's priorities, and
-     a comment on that issue noting you incorporated it. If nothing was
-     relevant, say "No algorithm changes affecting us this week."
+   - A short **"Algorithm watch"** section: one line per `google-update`
+     issue you read this week, saying what it became in this report (a
+     priority, an item for the owner, or no action and why). Then close
+     each one as step 2 says, with that line as the comment. If no alert
+     was open, say "No algorithm changes affecting us this week."
    - A short **"Build status"** line: whether `pagemap.md` exists yet,
      whether `docs/` is still a placeholder, and what step 3 found.
      Nothing ships until `pagemap.md` exists with the partner's written
