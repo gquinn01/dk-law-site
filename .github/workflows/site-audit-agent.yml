@@ -2,7 +2,18 @@ name: "DKY: Site Auditor (weekly)"
 
 on:
   schedule:
-    - cron: "0 12 * * 1"   # Every Monday, 12:00 UTC (8:00am ET)
+    # Every Monday at 12:53 UTC: 8:53am Eastern in summer, 7:53am in winter.
+    # GitHub's clock is UTC and does not follow daylight time.
+    #
+    # NOT ON THE HOUR, on purpose (changed 2026-10-15, as the agency's own
+    # repo was on 2026-10-12). GitHub delays scheduled runs at busy times
+    # and names the start of every hour as one of them. Its advice is to
+    # pick a different minute, and that is all this is. Do not tidy it
+    # back to :00.
+    # This repo never ran on its old "0 12" schedule, but the two sibling
+    # repos on the same line started five to nine hours late every week,
+    # so it moves before its first Monday rather than after.
+    - cron: "53 12 * * 1"
   workflow_dispatch: {}     # Adds a manual "Run workflow" button so you can test anytime
 
 permissions:

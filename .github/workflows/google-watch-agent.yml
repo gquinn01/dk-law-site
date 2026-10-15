@@ -2,7 +2,18 @@ name: "DKY: Google Watcher (daily)"
 
 on:
   schedule:
-    - cron: "0 11 * * *"   # Every day, 11:00 UTC (7:00am ET)
+    # Every day at 11:29 UTC: 7:29am Eastern in summer, 6:29am in winter.
+    # GitHub's clock is UTC and does not follow daylight time.
+    #
+    # NOT ON THE HOUR, on purpose (changed 2026-10-15, as the agency's own
+    # repo was on 2026-10-12). GitHub delays scheduled runs at busy times
+    # and names the start of every hour as one of them. Its advice is to
+    # pick a different minute, and that is all this is. Do not tidy it
+    # back to :00.
+    # This repo never ran on its old "0 11" schedule, but the two sibling
+    # repos on the same line started five to nine hours late every day,
+    # so it moves before its first run rather than after.
+    - cron: "29 11 * * *"
   workflow_dispatch: {}     # Manual "Run workflow" button for testing
 
 permissions:

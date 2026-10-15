@@ -150,13 +150,18 @@ live domain, and record the decision here.
 
 ## The two agents
 
-- **Site Auditor** (`agents/site-auditor.md`), Mondays 12:00 UTC. Files the
+- **Site Auditor** (`agents/site-auditor.md`), Mondays 12:53 UTC. Files the
   weekly report as a GitHub Issue labeled `audit-report`, titled
   `DKY: Weekly SEO Audit, <date>`. That report is the monitoring product the
   retainer buys.
-- **Google Watcher** (`agents/google-watcher.md`), daily 11:00 UTC. Files a
+- **Google Watcher** (`agents/google-watcher.md`), daily 11:29 UTC. Files a
   `google-update` Issue only when something matters to this firm. Most days
   it files nothing, and silence is a feature.
+
+Neither runs on the hour (changed 2026-10-15). GitHub delays scheduled
+runs at the start of every hour, and the sibling repos' reports were
+landing mid-afternoon; the workflow files carry the reasoning. Do not
+tidy the minutes back to :00.
 
 A Watcher alert lives one week (decided 2026-10-14, same rule as the
 agency's own repo). The auditor reads every open `google-update` issue
